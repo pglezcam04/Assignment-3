@@ -1,0 +1,121 @@
+---
+title: "A3"
+output: pdf_document
+date: "2025-03-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup, include=FALSE}
+setwd("C:/UNIVERSITY/Winter 2025/A3/wassa")
+```
+
+Windows
+```{r, include=FALSE}
+data1 <- read.csv("C:/UNIVERSITY/Winter 2025/A3/wassa/Zero Emmission Vehicles.csv")
+data2 <- read.csv("C:/UNIVERSITY/Winter 2025/A3/wassa/population.csv") 
+data3 <- read.csv("C:/UNIVERSITY/Winter 2025/A3/wassa/Weekly income.csv") 
+
+data1 <- data1[,c(1,2,13)]
+data1$GEO <- ifelse(data1$GEO == "British Columbia and the Territories", "British Columbia", data1$GEO)
+
+data2 <- data2[,c(1,2,10)]
+data2[,3] <- data2[,3] / 1000
+
+data3 <- data3[,c(1,2,12)]
+
+data1$REF_DATE <- as.Date(paste0(data1$REF_DATE, "-01"))
+data2$REF_DATE <- as.Date(paste0(data2$REF_DATE, "-01"))
+data3$REF_DATE <- as.Date(paste0(data3$REF_DATE, "-01"))
+
+colnames(data1)[3] <- "ev_reg"
+colnames(data2)[3] <- "population"
+colnames(data3)[3] <- "avg_weekly_earnings"
+
+final_data <- merge(data1, data2, by = c("GEO", "REF_DATE"), all = TRUE)
+
+final_data <- merge(final_data, data3, by = c("GEO", "REF_DATE"), all = TRUE)
+
+final_data <- na.omit(final_data)
+```
+
+Mac
+```{r, include=FALSE}
+data1 <- read.csv("~/Documents/UNIVERSITY/Winter 2025/ECON323/A3/Zero Emmission Vehicles.csv")
+data2 <- read.csv("~/Documents/UNIVERSITY/Winter 2025/ECON323/A3/population.csv")
+data3 <- read.csv("~/Documents/UNIVERSITY/Winter 2025/ECON323/A3/Weekly income.csv")
+
+data1 <- data1[,c(1,2,13)]
+data1$GEO <- ifelse(data1$GEO == "British Columbia and the Territories", "British Columbia", data1$GEO)
+
+data2 <- data2[,c(1,2,10)]
+data2[,3] <- data2[,3] / 1000
+
+data3 <- data3[,c(1,2,12)]
+
+data1$REF_DATE <- as.Date(paste0(data1$REF_DATE, "-01"))
+data2$REF_DATE <- as.Date(paste0(data2$REF_DATE, "-01"))
+data3$REF_DATE <- as.Date(paste0(data3$REF_DATE, "-01"))
+
+colnames(data1)[3] <- "ev_reg"
+colnames(data2)[3] <- "population"
+colnames(data3)[3] <- "avg_weekly_earnings"
+
+final_data <- merge(data1, data2, by = c("GEO", "REF_DATE"), all = TRUE)
+
+final_data <- merge(final_data, data3, by = c("GEO", "REF_DATE"), all = TRUE)
+
+final_data <- na.omit(final_data)
+```
+
+```{r}
+library(dplyr)
+
+summary_stats <- final_data %>% # Plug in each dataset
+  group_by(GEO) %>%
+  summarize(
+    Mean = mean(ev_reg, na.rm = TRUE),
+    Median = median(ev_reg, na.rm = TRUE),
+    SD = sd(ev_reg, na.rm = TRUE),
+    Min = min(ev_reg, na.rm = TRUE),
+    Max = max(ev_reg, na.rm = TRUE),
+    Count = n()
+  )
+summary_stats
+
+summary_stats <- final_data %>% # Plug in each dataset
+  group_by(GEO) %>%
+  summarize(
+    Mean = mean(population, na.rm = TRUE),
+    Median = median(population, na.rm = TRUE),
+    SD = sd(population, na.rm = TRUE),
+    Min = min(population, na.rm = TRUE),
+    Max = max(population, na.rm = TRUE),
+    Count = n()
+  )
+summary_stats
+
+summary_stats <- final_data %>% # Plug in each dataset
+  group_by(GEO) %>%
+  summarize(
+    Mean = mean(avg_weekly_earnings, na.rm = TRUE),
+    Median = median(avg_weekly_earnings, na.rm = TRUE),
+    SD = sd(avg_weekly_earnings, na.rm = TRUE),
+    Min = min(avg_weekly_earnings, na.rm = TRUE),
+    Max = max(avg_weekly_earnings, na.rm = TRUE),
+    Count = n()
+  )
+summary_stats
+```
+
+```{r}
+library(ggplot2)
+ggplot(final_data, aes(x = REF_DATE, y = ev_reg, color = GEO)) +
+  geom_line(linewidth = 1) +
+  labs(title = "New EV Registrations", x = "Time", y = "Number") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
