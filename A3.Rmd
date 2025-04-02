@@ -1,7 +1,8 @@
 ---
 title: "A3"
+author: "Patricio Gonzalez"
+date: "2025-03-31"
 output: pdf_document
-date: "2025-03-25"
 ---
 
 ```{r setup, include=FALSE}
@@ -70,6 +71,13 @@ final_data <- merge(final_data, data3, by = c("GEO", "REF_DATE"), all = TRUE)
 final_data <- na.omit(final_data)
 ```
 
+Question 1
+
+a)
+British Columbia had a different measure because for data 1 it was called "British Columbia and Territories". This meant that when running panel data, the geographies would not match. To address this, I ran an ifelse() function to change all the instances to just British Columbia. Additionally, the territories don't change the number significantly, which won't change our estimates from our models that much.
+
+b) This is panel data. Panel data refers to the method of data collection were we track multiple individuals over time. In this assignment, we are using a macro panel because we are tracking things like companies, countries, or in this case, provinces. In a very high level, it is a combination between cross-sectional data and time series.  
+
 ```{r}
 library(dplyr)
 
@@ -109,13 +117,110 @@ summary_stats <- final_data %>% # Plug in each dataset
   )
 summary_stats
 ```
-
 ```{r}
 library(ggplot2)
+
 ggplot(final_data, aes(x = REF_DATE, y = ev_reg, color = GEO)) +
   geom_line(linewidth = 1) +
   labs(title = "New EV Registrations", x = "Time", y = "Number") +
   theme_minimal() +
   theme(legend.title = element_blank())
-```
 
+ggplot(final_data, aes(x = REF_DATE, y = population, color = GEO)) +
+  geom_line(linewidth = 1) +
+  labs(title = "Population", x = "Time", y = "Number") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+ggplot(final_data, aes(x = REF_DATE, y = avg_weekly_earnings, color = GEO)) +
+  geom_line(linewidth = 1) +
+  labs(title = "Average Weekly Earnings", x = "Time", y = "Number") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+By looking at the mean and the median of ev registrations, we can see that Quebec has the most amount of EVs on average. with Ontario being second. Quebec has EV-friendly policies, like the Roulez Vert program [1]. This program provided up to $4,000 for the purchase of new battery-electric vehicles, or up to 2000 for plug-in hybrids. Quebec has a target to have 2 million electric vehicles on its roads by 2030 [2]. We can see that the effect of these policies is clearly boosting the amount of EV registrations in Quebec. On the other hand, provinces like Ontario and BC have very similar trends. In here, EV registrations have a more linear uptrend, indicating that they also offer incentives to drive up the amount of EVs in the road, just not as exponential as BC. From the table and the mean, we can see that most provinces do not offer these incentives, especially a province like Alberta for example, which is heavily driven by the petroleum industry, that being the reason why it was excluded.  
+
+Sources:
+[1] https://electricautonomy.ca/policy-regulations/ev-rebates-incentives-funding/2025-03-28/quebec-ev-rebate-program-canada/
+[2] https://www.environnement.gouv.qc.ca/changementsclimatiques/vze/index-en.htm 
+
+
+```{r}
+final_data$t <- rep(1:30, length.out = nrow(final_data))
+final_data$s <- rep(1:4, length.out = 31)
+final_data$s <- as.factor(final_data$s)
+
+library(plm)
+final_data_panel <- pdata.frame(final_data, index = c("GEO", "REF_DATE"))
+
+summary(lm(ev_reg ~ population + avg_weekly_earnings + t + factor(s), data = final_data_panel))
+```
+c) / d) We have to control for trend because all series are trending upward. By including a trend, we avoid having a spurious regression problem. Since it is also statistically significant we cannot exclude it from our regression. We don't have to control for seasonality since all factors are statistically insignificant. This means that seasonality doesn't have a an impact to be controlled for and doesn't cause and biases in the coefficients. 
+
+```{r}
+# Pooled OLS
+pooled_OLS <- lm(ev_reg ~ population + avg_weekly_earnings + t, data = final_data_panel)
+
+# First Difference Model
+fd_model <- plm(ev_reg ~ population + avg_weekly_earnings, model = "fd", data = final_data_panel)
+
+# Fixed Effect Model
+fe_model <- plm(ev_reg ~ population + avg_weekly_earnings, model = "within", data = final_data_panel)
+fixef(fe_model)
+
+# Random Effect Model
+random_model <- plm(ev_reg ~ population + avg_weekly_earnings, model = "random", data = final_data_panel)
+summary(random_model)
+
+stargazer::stargazer(pooled_OLS, fd_model, fe_model, random_model, type = "text")
+```
+These are the outputs of our four models. From the get go, we can see that pooled OLS is not a great choice. The time trend becomes negative, which doesn't make sense when we see our trends above, it is because we bundled up all observations and treated them as cross-sectional data. Additionally, Pooled OLS doesn't seem like the wisest option to use because we assume that there is no individual-specific effect, which is clearly present in the data set.
+
+When talking about first difference, we can see that a one-unit change from one time period to the next has a 3952 increase and a 3.743 decrease in EV registrations. The good thing about first difference is the fact that it controls for anything that doesn't change over time, something that we sometimes observe, allowing us to avoid OVB from it.
+
+In fixed effect, we also control for unobserved differences between provinces. Both our regressors are statistically significant and have a positive effect on EV registrations. This means that within a given province, growths in population and income increase the adoption of EVs. We can see that Ontario and Quebec fixed effects are large and negative not because they have fewer EV registrations, but because thet have less than expected growth or baseline levels compared to a province like PEI that has low amounts of EV registrations, so it doesn't have a big fixed effect. This is probably the strongest model choice that we have between these 4. In pooled OLS, we violate the panel structure, and in first difference we have to lose a degree of freedom for each province because we have to difference it away.
+
+For random effect model, we have to assume that the covariance between the province-specific effects (ai) and the independent variables is 0, which is often untrue. This makes out whole model completely useless and biased, which is why it is rarely used. The theta of the model is .838, meaning that the model has a very similar behaviour to a fixed effect model.
+
+A2 Model
+```{r}
+setwd("/Users/pglezcam04/Documents/UNIVERSITY/Winter 2025/ECON323")
+
+data1_2 <- read.csv("~/Documents/UNIVERSITY/Winter 2025/ECON323/A2/Average weekly earnings (including overtime) for all employees by enterprise size.csv")
+data2_2 <- read.csv("~/Documents/UNIVERSITY/Winter 2025/ECON323/A2/New motor vehicle registrations.csv")
+data3_2 <- read.csv("~/Documents/UNIVERSITY/Winter 2025/ECON323/A2/Population estimates, quarterly.csv")
+
+data1_2 <- data1_2[, c(1, 12)] # Extract column 1 and 12
+data2_2 <- data2_2[, c(1, 13)] # Extract column 1 and 13
+data3_2 <- data3_2[, c(1, 10)] # Extract column 1 and 10
+
+library(xts)
+data1_2$REF_DATE <- paste0(data1_2$REF_DATE, "-01")
+data2_2$REF_DATE <- paste0(data2_2$REF_DATE, "-01")
+data3_2$REF_DATE <- paste0(data3_2$REF_DATE, "-01")
+
+data1_2$REF_DATE <- as.Date(data1_2$REF_DATE)
+data2_2$REF_DATE <- as.Date(data2_2$REF_DATE)
+data3_2$REF_DATE <- as.Date(data3_2$REF_DATE)
+
+data1_2 <- xts(data1_2[,2], order.by = data1_2$REF_DATE)
+data2_2 <- xts(data2_2[,2], order.by = data2_2$REF_DATE)
+data3_2 <- xts(data3_2[,2], order.by = data3_2$REF_DATE)
+
+colnames(data1_2) <- c("weekly earnings") # New names
+colnames(data2_2) <- c("new motor vehicle registration") # New names
+colnames(data3_2) <- c("population") # New names
+
+final_data_2 <- merge(data1_2, data2_2, data3_2)
+final_data_2 <- na.omit(final_data_2) # remove data points
+
+final_data_2$t <- seq(1:nrow(final_data_2))
+final_data_2$s <- relevel(factor(rep(1:4, length.out = nrow(final_data_2))), ref = 1)
+final_data_2$lag1 <- lag(final_data_2$new.motor.vehicle.registration, 1)
+final_data_2$lag2 <- lag(final_data_2$new.motor.vehicle.registration, 2)
+final_data_2$lag3 <- lag(final_data_2$new.motor.vehicle.registration, 3)
+final_data_2$lag4 <- lag(final_data_2$new.motor.vehicle.registration, 4)
+
+A2_model <- lm(new.motor.vehicle.registration ~ population + weekly.earnings + as.factor(s) + lag1 + lag2 + lag3 + lag4, data = final_data_2)
+summary(A2_model)
+```
