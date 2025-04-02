@@ -224,3 +224,9 @@ final_data_2$lag4 <- lag(final_data_2$new.motor.vehicle.registration, 4)
 A2_model <- lm(new.motor.vehicle.registration ~ population + weekly.earnings + as.factor(s) + lag1 + lag2 + lag3 + lag4, data = final_data_2)
 summary(A2_model)
 ```
+Pooled OLS offers a very different approach than time series OLS. The main issue with pooled OLS is the fact that it sort of violates the panel data form because your are not difference between provinces which might create weird results, like the negative effect from the trend. In this model, population and earnings are statistically significant, while in the time series one, they aren't. Since the one of the lags is significant at 10%, we can say that the dependent variable's lags are better predictors. The main issue with pooled OLS in this case is the fact that pooled OLS ignores changes within provinces, so our estimates might be biased because of the regional differences between the provinces. In time series, the high R-squared implies that it fits the data well, but it fails to explain differences between provinces. In these models, we can see the trade off between explaining variation of EV registrations across provinces with pooled OLS and capturing trends over time with time series. 
+
+
+
+
+
